@@ -10,15 +10,28 @@ const agent = proxyUrl ? new HttpsProxyAgent(proxyUrl) : undefined;
 
 const bot = new Telegraf(process.env.BOT_TOKEN, { telegram: { agent } });
 
+const BRANCHES = {
+    bauman: 'Баумана, 15',
+    kremlin: 'Кремлёвская, 8',
+    univer: 'Профессора Нужина, 3',
+}
+
+const ZONES = {
+    game: 'Игровая (PS5/ПК)',
+    meeting: 'Переговорка',
+    lounge: 'Лаунж',
+    vr: 'VR-комната',
+}
+
 const mainKeyboard = Markup.keyboard([
     ['📆 Записаться', '📞 Контакты'],
     ['ℹ️ О нас', '🆘 Помощь']
 ]).resize()
 
 const selectBranch = Markup.inlineKeyboard([
-    [Markup.button.callback('🎮 Баумана, 15 (+ VR)', 'branch_bauman')],
-    [Markup.button.callback('💼 Кремлёвская, 8 (коворкинг)', 'branch_kremlin')],
-    [Markup.button.callback('🎓 Профессора Нужина, 3 (КФУ)', 'branch_univer')],
+    [Markup.button.callback('Баумана, 15 (+ VR)', 'branch_bauman')],
+    [Markup.button.callback('Кремлёвская, 8 (коворкинг)', 'branch_kremlin')],
+    [Markup.button.callback('Профессора Нужина, 3 (КФУ)', 'branch_univer')],
 ])
 
 const selectZone = Markup.inlineKeyboard([
@@ -32,6 +45,10 @@ const selectZoneWithVR = Markup.inlineKeyboard([
     [Markup.button.callback('💼 Переговорка', 'zone_meeting')],
     [Markup.button.callback('🛋 Лаунж', 'zone_lounge')],
     [Markup.button.callback('🥽 VR-комната', 'zone_vr')],
+])
+
+const selectDate = Markup.inlineKeyboard([
+    [Markup.button.callback('Затычка', 'date')]
 ])
 
 bot.use(session({ defaultSession: () => ({}) }));
@@ -111,46 +128,20 @@ bot.hears('🆘 Помощь', (ctx) => {
 Ответим в ближайшее время ✨`);
 });
 
-bot.action('branch_bauman', (ctx) => {
+bot.action(/^branch_(.+)$/, (ctx) => {
     ctx.answerCbQuery();
-    ctx.session.branch = 'Баумана, 15';
-    ctx.reply(`✅ Филиал «${ctx.session.branch}» выбран. Дальше выбираем зону.`, selectZoneWithVR);
+    const key = ctx.match[1];
+    ctx.session.branch = BRANCHES[key];
+    const kb = key === 'bauman' ? selectZoneWithVR : selectZone;
+    ctx.reply(`✅ Филиал «${ctx.session.branch}» выбран. Дальше выбираем зону.`, kb);
+
 });
 
-bot.action('branch_kremlin', (ctx) => {
+bot.action(/^zone_(.+)$/, (ctx) => {
     ctx.answerCbQuery();
-    ctx.session.branch = 'Кремлёвская, 8';
-    ctx.reply(`✅ Филиал «${ctx.session.branch}» выбран. Дальше выбираем зону.`, selectZone);
-});
-
-bot.action('branch_univer', (ctx) => {
-    ctx.answerCbQuery();
-    ctx.session.branch = 'Профессора Нужина, 3';
-    ctx.reply(`✅ Филиал «${ctx.session.branch}» выбран. Дальше выбираем зону.`, selectZone);
-});
-
-bot.action('zone_game', (ctx) => {
-    ctx.answerCbQuery();
-    ctx.session.zone = 'Игровая (PS5/ПК)';
-    ctx.reply(`📝 Записываю:\nФилиал: ${ctx.session.branch}\nЗона: ${ctx.session.zone}\n\nДальше выбираем дату.`);
-});
-
-bot.action('zone_meeting', (ctx) => {
-    ctx.answerCbQuery();
-    ctx.session.zone = 'Переговорка';
-    ctx.reply(`📝 Записываю:\nФилиал: ${ctx.session.branch}\nЗона: ${ctx.session.zone}\n\nДальше выбираем дату.`);
-});
-
-bot.action('zone_lounge', (ctx) => {
-    ctx.answerCbQuery();
-    ctx.session.zone = 'Лаунж';
-    ctx.reply(`📝 Записываю:\nФилиал: ${ctx.session.branch}\nЗона: ${ctx.session.zone}\n\nДальше выбираем дату.`);
-});
-
-bot.action('zone_vr', (ctx) => {
-    ctx.answerCbQuery();
-    ctx.session.zone = 'VR-комната';
-    ctx.reply(`📝 Записываю:\nФилиал: ${ctx.session.branch}\nЗона: ${ctx.session.zone}\n\nДальше выбираем дату.`);
+    const key = ctx.match[1];
+    ctx.session.zone = ZONES[key];
+    ctx.reply(`📝 Записываю:\nФилиал: ${ctx.session.branch}\nЗона: ${ctx.session.zone}\n\nДальше выбираем дату.`, selectDate);
 });
 
 bot.on('text', (ctx) => {
