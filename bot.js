@@ -21,6 +21,19 @@ const selectBranch = Markup.inlineKeyboard([
     [Markup.button.callback('🎓 Профессора Нужина, 3 (КФУ)', 'branch_univer')],
 ])
 
+const selectZone = Markup.inlineKeyboard([
+    [Markup.button.callback('🎮 Игровая (PS5/ПК)', 'zone_game')],
+    [Markup.button.callback('💼 Переговорка', 'zone_meeting')],
+    [Markup.button.callback('🛋 Лаунж', 'zone_lounge')],
+])
+
+const selectZoneWithVR = Markup.inlineKeyboard([
+    [Markup.button.callback('🎮 Игровая (PS5/ПК)', 'zone_game')],
+    [Markup.button.callback('💼 Переговорка', 'zone_meeting')],
+    [Markup.button.callback('🛋 Лаунж', 'zone_lounge')],
+    [Markup.button.callback('🥽 VR-комната', 'zone_vr')],
+])
+
 bot.use(session({ defaultSession: () => ({}) }));
 
 bot.start((ctx) => {
@@ -101,19 +114,43 @@ bot.hears('🆘 Помощь', (ctx) => {
 bot.action('branch_bauman', (ctx) => {
     ctx.answerCbQuery();
     ctx.session.branch = 'Баумана, 15';
-    ctx.reply(`✅ Филиал «${ctx.session.branch}» выбран. Дальше выбираем зону.`);
+    ctx.reply(`✅ Филиал «${ctx.session.branch}» выбран. Дальше выбираем зону.`, selectZoneWithVR);
 });
 
 bot.action('branch_kremlin', (ctx) => {
     ctx.answerCbQuery();
     ctx.session.branch = 'Кремлёвская, 8';
-    ctx.reply(`✅ Филиал «${ctx.session.branch}» выбран. Дальше выбираем зону.`);
+    ctx.reply(`✅ Филиал «${ctx.session.branch}» выбран. Дальше выбираем зону.`, selectZone);
 });
 
 bot.action('branch_univer', (ctx) => {
     ctx.answerCbQuery();
     ctx.session.branch = 'Профессора Нужина, 3';
-    ctx.reply(`✅ Филиал «${ctx.session.branch}» выбран. Дальше выбираем зону.`);
+    ctx.reply(`✅ Филиал «${ctx.session.branch}» выбран. Дальше выбираем зону.`, selectZone);
+});
+
+bot.action('zone_game', (ctx) => {
+    ctx.answerCbQuery();
+    ctx.session.zone = 'Игровая (PS5/ПК)';
+    ctx.reply(`📝 Записываю:\nФилиал: ${ctx.session.branch}\nЗона: ${ctx.session.zone}\n\nДальше выбираем дату.`);
+});
+
+bot.action('zone_meeting', (ctx) => {
+    ctx.answerCbQuery();
+    ctx.session.zone = 'Переговорка';
+    ctx.reply(`📝 Записываю:\nФилиал: ${ctx.session.branch}\nЗона: ${ctx.session.zone}\n\nДальше выбираем дату.`);
+});
+
+bot.action('zone_lounge', (ctx) => {
+    ctx.answerCbQuery();
+    ctx.session.zone = 'Лаунж';
+    ctx.reply(`📝 Записываю:\nФилиал: ${ctx.session.branch}\nЗона: ${ctx.session.zone}\n\nДальше выбираем дату.`);
+});
+
+bot.action('zone_vr', (ctx) => {
+    ctx.answerCbQuery();
+    ctx.session.zone = 'VR-комната';
+    ctx.reply(`📝 Записываю:\nФилиал: ${ctx.session.branch}\nЗона: ${ctx.session.zone}\n\nДальше выбираем дату.`);
 });
 
 bot.on('text', (ctx) => {
