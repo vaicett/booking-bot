@@ -26,6 +26,7 @@ const ZONES = {
 }
 
 const mainKeyboard = Markup.keyboard([
+    ['💰 Прайс-лист'],
     ['📆 Записаться', '📞 Контакты'],
     ['ℹ️ О нас', '🆘 Помощь']
 ]).resize()
@@ -77,23 +78,25 @@ function buildDateKeyboard(days = 7) {
     return Markup.inlineKeyboard(rows);
 }
 
-function buildTimeKeyboard(startHour = 10, endHour = 22) {
+function buildHourKeyboard(prefix, startHour = 10, endHour = 22) {
     const buttons = [];
-
     for (let h = startHour; h <= endHour; h++) {
         const hh = String(h).padStart(2, '0');
-        const time = `${hh}:00`;
-
-        let label = `${time}`;
-
-        buttons.push(Markup.button.callback(label, `time_${time}`));
+        buttons.push(Markup.button.callback(`${hh} ч`, `${prefix}_h_${hh}`));
     }
-
     const rows = [];
-    for (let i = 0; i < buttons.length; i += 3) {
-        rows.push(buttons.slice(i, i + 3));
+    for (let i = 0; i < buttons.length; i += 4) {
+        rows.push(buttons.slice(i, i + 4));
     }
     return Markup.inlineKeyboard(rows);
+}
+
+function buildMinuteKeyboard(prefix, hh) {
+    const mins = ['00', '15', '30', '45'];
+    const row = mins.map(mm => 
+        Markup.button.callback(`${hh}:${mm}`, `${prefix}_t_${hh}:${mm}`)
+    );
+    return Markup.inlineKeyboard([row]);
 }
 
 bot.use(session({ defaultSession: () => ({}) }));
@@ -152,6 +155,35 @@ bot.hears('ℹ️ О нас', (ctx) => {
 Наша цель — чтобы ты пришёл, занял своё место и просто отдыхал или работал в комфорте 🎮`);
 });
 
+bot.hears('💰 Прайс-лист', (ctx) => {
+  ctx.reply(`💰 Прайс-лист «Тайм-Аут»
+Платишь за время, а не за еду.
+———————————————
+
+⌛ Тариф по времени
+- Первый час —  3 ₽/мин
+- После 60 минут —  2 ₽/мин
+- Стоп-чек —  600 ₽/день
+  (дальше время бесплатно)
+
+🎓 Скидки
+- Студентам −30% по студенческому билету!
+
+🍪 Уже включено в стоимость
+- Чай, кофе, печеньки
+- Настолки и приставки
+- Wi-Fi и зарядки
+
+🪑 Зоны
+- 🎮 Игровая (PS5 / ПК)
+- 💼 Переговорка
+- 🛋 Лаунж
+- 🥽 VR-комната — только на Баумана
+———————————————
+
+Бронь — кнопка «Записаться» в меню 👇`);
+});
+
 bot.hears('📆 Записаться', (ctx) => {
     ctx.reply(`📍 Выбери филиал в Казани:`, selectBranch);
 });
@@ -174,42 +206,57 @@ bot.hears('🆘 Помощь', (ctx) => {
 });
 
 bot.action(/^branch_(.+)$/, (ctx) => {
-    ctx.answerCbQuery();
-    const key = ctx.match[1];
-    ctx.session.branch = BRANCHES[key];
-    const kb = key === 'bauman' ? selectZoneWithVR : selectZone;
-    ctx.reply(`✅ Филиал «${ctx.session.branch}» выбран. Дальше выбираем зону.`, kb);
-
+  ctx.answerCbQuery();
+  const key = ctx.match[1];
+  ctx.session.branch = BRANCHES[key];
+  const kb = key === 'bauman' ? selectZoneWithVR : selectZone;
+  ctx.reply(`✅ Филиал выбран
+🏢 Филиал:  ${ctx.session.branch}
+———————————————
+Шаг 2 из 4 — выбери зону 👇`, kb);
 });
 
 bot.action(/^zone_(.+)$/, (ctx) => {
-    ctx.answerCbQuery();
-    const key = ctx.match[1];
-    ctx.session.zone = ZONES[key];
-    ctx.reply(`📝 Записываю:\nФилиал: ${ctx.session.branch}\nЗона: ${ctx.session.zone}\n\nДальше выбираем дату.`, buildDateKeyboard());
+  ctx.answerCbQuery();
+  const key = ctx.match[1];
+  ctx.session.zone = ZONES[key];
+  ctx.reply(`✅ Зона выбрана
+🏢 Филиал:  ${ctx.session.branch}
+🎮 Зона:  ${ctx.session.zone}
+———————————————
+Шаг 3 из 4 — выбери дату 👇`, buildDateKeyboard());
 });
 
 bot.action(/^date_(.+)$/, (ctx) => {
-    ctx.answerCbQuery();
-    ctx.session.date = ctx.match[1];
-    ctx.reply(`⭐ Отлично\nФилиал: ${ctx.session.branch}\nЗона: ${ctx.session.zone}\nДата: ${ctx.session.date}\n\nДальше выберем время.`, buildTimeKeyboard());
+  ctx.answerCbQuery();
+  ctx.session.date = ctx.match[1];
+  ctx.reply(`✅ Дата выбрана
+🏢 Филиал:  ${ctx.session.branch}
+🎮 Зона:  ${ctx.session.zone}
+📅 Дата:  ${ctx.session.date}
+———————————————
+Шаг 4 из 4 — во сколько придёшь? 👇`, buildHourKeyboard('arrive'));
 });
 
-bot.action(/^time_(.+)$/, (ctx) => {
-    ctx.answerCbQuery();
-    ctx.session.time = ctx.match[1];
+bot.action(/^arrive_h_(.+)$/, (ctx) => {
+  ctx.answerCbQuery();
+  const hh = ctx.match[1];
+  ctx.reply(`🕒 Час прихода: ${hh}:00
+Уточни минуты 👇`, buildMinuteKeyboard('arrive', hh));
+});
 
-    const { branch, zone, date, time } = ctx.session;
-
-    ctx.reply(`✅ Бронь оформлена!
-
-📍 Филиал:  ${branch}
+bot.action(/^arrive_t_(.+)$/, (ctx) => {
+  ctx.answerCbQuery();
+  ctx.session.time = ctx.match[1];
+  const { branch, zone, date, time } = ctx.session;
+  ctx.reply(`✅ Бронь оформлена
+———————————————
+🏢 Филиал:  ${branch}
 🎮 Зона:  ${zone}
 📅 Дата:  ${date}
-🕒 Время:  ${time}
-
-🎓 Не забудь студенческий билет — скидка 30%!
-
+🕒 Приход:  к ${time}
+———————————————
+🎓 Студенческий билет даёт скидку 30%.
 Ждём тебя в «Тайм-Аут» 🍪`);
 });
 
