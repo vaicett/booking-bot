@@ -10,6 +10,8 @@ const agent = proxyUrl ? new HttpsProxyAgent(proxyUrl) : undefined;
 
 const bot = new Telegraf(process.env.BOT_TOKEN, { telegram: { agent } });
 
+const WEEKDAYS = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+
 const BRANCHES = {
     bauman: 'Баумана, 15',
     kremlin: 'Кремлёвская, 8',
@@ -29,9 +31,9 @@ const mainKeyboard = Markup.keyboard([
 ]).resize()
 
 const selectBranch = Markup.inlineKeyboard([
-    [Markup.button.callback('Баумана, 15 (+ VR)', 'branch_bauman')],
-    [Markup.button.callback('Кремлёвская, 8 (коворкинг)', 'branch_kremlin')],
-    [Markup.button.callback('Профессора Нужина, 3 (КФУ)', 'branch_univer')],
+    [Markup.button.callback('Баумана, 15', 'branch_bauman')],
+    [Markup.button.callback('Кремлёвская, 8', 'branch_kremlin')],
+    [Markup.button.callback('Профессора Нужина, 3', 'branch_univer')],
 ])
 
 const selectZone = Markup.inlineKeyboard([
@@ -47,9 +49,52 @@ const selectZoneWithVR = Markup.inlineKeyboard([
     [Markup.button.callback('🥽 VR-комната', 'zone_vr')],
 ])
 
-const selectDate = Markup.inlineKeyboard([
-    [Markup.button.callback('Затычка', 'date')]
-])
+function buildDateKeyboard(days = 7) {
+    const buttons = [];
+    const today = new Date();
+
+    for (let i = 0; i < days; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() + i);
+
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        const iso = `${yyyy}-${mm}-${dd}`;
+
+        let label;
+        if (i === 0) label = 'Сегодня';
+        else if (i === 1) label = 'Завтра';
+        else label = `${WEEKDAYS[d.getDay()]}, ${dd}.${mm}`;
+
+        buttons.push(Markup.button.callback(label, `date_${iso}`));
+    }
+
+    const rows = [];
+    for (let i = 0; i < buttons.length; i += 3) {
+        rows.push(buttons.slice(i, i + 3));
+    }
+    return Markup.inlineKeyboard(rows);
+}
+
+function buildTimeKeyboard(startHour = 10, endHour = 22) {
+    const buttons = [];
+
+    for (let h = startHour; h <= endHour; h++) {
+        const hh = String(h).padStart(2, '0');
+        const time = `${hh}:00`;
+
+        let label = `${time}`;
+
+        buttons.push(Markup.button.callback(label, `time_${time}`));
+    }
+
+    const rows = [];
+    for (let i = 0; i < buttons.length; i += 3) {
+        rows.push(buttons.slice(i, i + 3));
+    }
+    return Markup.inlineKeyboard(rows);
+}
 
 bot.use(session({ defaultSession: () => ({}) }));
 
@@ -89,7 +134,7 @@ bot.hears('📞 Контакты', (ctx) => {
 - Профессора Нужина, 3 (рядом с КФУ)
 
 🕒 Время работы:
-Ежедневно с 10:00 до 02:00 по МСК
+Ежедневно с 10:00 до 02:00 (по Казани)
 
 Ответим максимально быстро ✨`);
 });
@@ -123,7 +168,7 @@ bot.hears('🆘 Помощь', (ctx) => {
 👉 @timeout_support
 
 🕒 Время работы:
-Ежедневно с 10:00 до 02:00 по МСК
+Ежедневно с 10:00 до 02:00 (по Казани)
 
 Ответим в ближайшее время ✨`);
 });
@@ -141,7 +186,31 @@ bot.action(/^zone_(.+)$/, (ctx) => {
     ctx.answerCbQuery();
     const key = ctx.match[1];
     ctx.session.zone = ZONES[key];
-    ctx.reply(`📝 Записываю:\nФилиал: ${ctx.session.branch}\nЗона: ${ctx.session.zone}\n\nДальше выбираем дату.`, selectDate);
+    ctx.reply(`📝 Записываю:\nФилиал: ${ctx.session.branch}\nЗона: ${ctx.session.zone}\n\nДальше выбираем дату.`, buildDateKeyboard());
+});
+
+bot.action(/^date_(.+)$/, (ctx) => {
+    ctx.answerCbQuery();
+    ctx.session.date = ctx.match[1];
+    ctx.reply(`⭐ Отлично\nФилиал: ${ctx.session.branch}\nЗона: ${ctx.session.zone}\nДата: ${ctx.session.date}\n\nДальше выберем время.`, buildTimeKeyboard());
+});
+
+bot.action(/^time_(.+)$/, (ctx) => {
+    ctx.answerCbQuery();
+    ctx.session.time = ctx.match[1];
+
+    const { branch, zone, date, time } = ctx.session;
+
+    ctx.reply(`✅ Бронь оформлена!
+
+📍 Филиал:  ${branch}
+🎮 Зона:  ${zone}
+📅 Дата:  ${date}
+🕒 Время:  ${time}
+
+🎓 Не забудь студенческий билет — скидка 30%!
+
+Ждём тебя в «Тайм-Аут» 🍪`);
 });
 
 bot.on('text', (ctx) => {
